@@ -1,4 +1,5 @@
 import torch
+import io
 from torch.testing._internal.common_device_type import instantiate_device_type_tests, dtypes
 from torch.testing._internal.common_utils import TestCase, run_tests
 from torch.testing._internal.jit_utils import JitTestCase
@@ -11,6 +12,22 @@ class TestComplex(JitTestCase):
             return a
 
         self.checkScript(fn, (3 + 5j,))
+
+    def test_pickle(self):
+        class ComplexModule(torch.nn.Module):
+            def __init__(self):
+                super(ComplexModule, self).__init__()
+                self.a = 3 + 5j
+
+            def forward(self, b: int):
+                return b
+
+        scripted = torch.jit.script(ComplexModule())
+        buffer = io.BytesIO()
+        torch.jit.save(scripted, buffer)
+        buffer.seek(0)
+        loaded = torch.jit.load(buffer)
+        self.assertEqual(loaded.a, 3 + 5j)
 
 class TestComplexTensor(TestCase):
     @dtypes(*torch.testing.get_all_complex_dtypes())
